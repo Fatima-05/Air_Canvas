@@ -35,3 +35,18 @@ class SoundEngine:
             else:
                 time.sleep(0.05)
 
+class HandSystem:
+    def __init__(self):
+        self.mp_hands=mp.solutions_hands
+        self.hands=self.mp_hands.Hands(max_num_hands=1,min_detection_confidence=0.7)
+
+    def process(self,img):
+        img_rgb=cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+        results=self.hands.process(img_rgb)
+
+        if results.multi_hand_landmarks:
+            landmarks=results.multi_hand_landmarks[0].landmark
+            h,w,_=img.shape
+            return [(int(lm.x * w), int(lm.y * h)) for lm in landmarks]
+        return None
+    
