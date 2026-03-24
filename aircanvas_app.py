@@ -94,3 +94,75 @@ class ArcPallete:
                         0, start_ang, end_ang, color, thickness)
         return hover_index
     
+def main():
+    cap=cv2.VideoCapture(0)
+    cap.set(3,Config.WIDTH)
+    cap.set(4,Config.HEIGHT)
+
+    hand_sys=HandSystem()
+    pallete=ArcPallete()
+    sound=SoundEngine()
+
+    canvas=np.zeros((Config.HEIGHT, Config.WIDTH, 3), dtype=np.uint8)
+    smooth_x, smooth_y = 0, 0
+    current_color = (255, 255, 0)
+
+    while True:
+        success, img = cap.read()
+        if not success:
+            break
+
+        img = cv2.flip(img, 1)
+        points = hand_sys.process(img)
+        is_drawing = False
+        velocity = 0
+
+        if points:
+            idx_tip = points[8]
+            thm_tip = points[4]
+            cx, cy = idx_tip
+            if smooth_x == 0:
+                smooth_x, smooth_y = cx, cy
+
+            smooth_x = int(smooth_x * (1 - Config.SMOOTHING) + cx * Config.SMOOTHING)
+            smooth_y = int(smooth_y * (1 - Config.SMOOTHING) + cy * Config.SMOOTHING)
+
+            dist = math.hypot(idx_tip[0] - thm_tip[0],
+                              idx_tip[1] - thm_tip[1])
+
+            hover_idx = palette.draw(img, (smooth_x, smooth_y))
+
+            if hover_idx != -1 and dist < Config.PINCH_THRESHOLD:
+                if hover_idx == len(palette.colors) - 1:
+                    canvas[:] = 0
+                else:
+                    palette.selected_index = hover_idx
+                    current_color = palette.colors[hover_idx]
+
+            elif dist < Config.PINCH_THRESHOLD and smooth_y > 200:
+                is_drawing = True
+                velocity = math.hypot(smooth_x - cx, smooth_y - cy)
+
+                cv2.line(canvas, (smooth_x, smooth_y), (cx, cy),
+                         current_color, Config.BRUSH_SIZE)
+
+            smooth_x, smooth_y = cx, cy
+
+        else:
+            palette.draw(img, None)
+
+        sound.set_drawing(is_drawing, velocity)
+
+        img = cv2.add(img, canvas)
+
+        cv2.imshow("Air Canvas", img)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    sound.stop_event.set()
+    cap.release()
+    cv2.destroyAllWindows()
+
+
+if __name__ == "__main__":
+    main()
