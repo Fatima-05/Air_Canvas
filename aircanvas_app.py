@@ -50,3 +50,47 @@ class HandSystem:
             return [(int(lm.x * w), int(lm.y * h)) for lm in landmarks]
         return None
     
+class ArcPallete:
+    def __init__(self):
+        self.colors=[
+            (0,0,255)
+            (0,165,255)
+            (0,255,255)
+            (0,255,0)
+            (255,255,0)
+            (255,0,255)
+            (255,255,255)
+            (0,0,0)
+        ]
+        self.selected_index=4
+
+    def draw(self,img,hover_pt):
+        cx,cy=Config.ARC_CENTER
+        radius=Config.ARC_RADIUS
+        num_colors=len(self.colors)
+        sector_angle=180/num_colors
+        
+        hover_index=-1
+
+        if hover_pt:
+            hx,hy=hover_pt
+            dist=math.hypot(hx-cx,hy-cy)
+            
+            if radius<dist<radius+Config.ARC_THICKNESS:
+                angle = math.degrees(math.atan2(hy - cy, hx - cx))
+                if angle < 0:
+                    angle += 360
+                if 0 <= angle <= 180:
+                    hover_index = int(angle / sector_angle)
+        
+        for i,color in enumerate(self.colors):
+            start_ang = i * sector_angle
+            end_ang = (i + 1) * sector_angle
+
+            thickness = Config.ARC_THICKNESS + (10 if i == hover_index else 0)
+
+            cv2.ellipse(img, (cx, cy),
+                        (radius + thickness // 2, radius + thickness // 2),
+                        0, start_ang, end_ang, color, thickness)
+        return hover_index
+    
